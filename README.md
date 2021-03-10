@@ -1,4 +1,4 @@
 # openchat
 
-A chat for any occaision
+A chat for any occasion
 
