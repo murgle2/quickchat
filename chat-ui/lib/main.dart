@@ -1,9 +1,6 @@
-// @dart=2.9
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/status.dart' as status;
 
@@ -12,7 +9,6 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -20,52 +16,55 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: ChatScreen(),
+      home: ChatScreen(
+        channel:
+          WebSocketChannel.connect(Uri.parse('wss://echo.websocket.org')),
+      ),
     );
   }
 }
 
 class ChatMessage extends StatelessWidget {
-  ChatMessage({this.text, this.animationController});
-
   final String text;
-  final AnimationController animationController;
   String _name = 'Brian Yetter';
+
+  ChatMessage({required this.text});
 
   @override
   Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: animationController,
-      child: Container(
-        margin: EdgeInsets.symmetric(vertical: 10.0),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              margin: const EdgeInsets.only(right: 16.0),
-              child: CircleAvatar(child: Text(_name[0])),
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 10.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(right: 16.0),
+            child: CircleAvatar(child: Text(_name[0])),
+          ),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SelectableText(_name + " User",
+                    style: Theme.of(context).textTheme.headline6),
+                Container(
+                  margin: EdgeInsets.only(top: 5.0),
+                  child: SelectableText(text),
+                )
+              ],
             ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SelectableText(_name + " User",
-                      style: Theme.of(context).textTheme.headline6),
-                  Container(
-                    margin: EdgeInsets.only(top: 5.0),
-                    child: SelectableText(text),
-                  )
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
 class ChatScreen extends StatefulWidget {
+  final WebSocketChannel channel;
+
+  ChatScreen({required this.channel});
+
   @override
   _ChatScreenState createState() => _ChatScreenState();
 }
@@ -157,41 +156,36 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     );
   }
 
+  @override
+  void initState() {
+    super.initState();
+
+    Stream stream = widget.channel.stream;
+    stream.listen((msg) {
+      ChatMessage message = ChatMessage(
+        text: msg,
+      );
+      setState(() {
+        _messages.insert(0, message);
+      });
+    });
+  }
+
   void _handleSubmitted(String text) {
-    //final channel = IOWebSocketChannel.connect('ws://localhost:8000/ws');
-
-    // StreamBuilder(
-    //   stream: channel.stream,
-    //   builder: (context, snapshot) {
-    //     return Text(snapshot.hasData ? '${snapshot.data}' : '');
-    //   },
-    // );
-
     _textController.clear();
     setState(() {
       _isComposing = false;
     });
-    ChatMessage message = ChatMessage(
-      text: text,
-      animationController: AnimationController(
-        duration: const Duration(milliseconds: 1000),
-        vsync: this,
-      ),
-    );
 
-    // channel.sink.add(message.text);
+    widget.channel.sink.add(text);
 
-    setState(() {
-      _messages.insert(0, message);
-    });
-    _focusNode.requestFocus(); // make sure we still have focus post submit
-    message.animationController.forward();
+    // make sure we still have focus post submit
+    _focusNode.requestFocus();
   }
 
   @override
   void dispose() {
-    for (ChatMessage message in _messages)
-      message.animationController.dispose();
+    widget.channel.sink.close();
     super.dispose();
   }
 }
