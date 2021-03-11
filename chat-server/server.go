@@ -13,18 +13,10 @@ import (
 var clients = make(map[*websocket.Conn]bool)
 
 // channel that acts as a queue for msgs sent by clients
-var broadcast = make(chan string)
+var broadcast = make(chan []byte)
 
 // takes normal http connection and upgrades to websocket
 var upgrader = websocket.Upgrader{}
-
-// holds our messages
-// backticks are metadata used by go to serialize/unserialize to/from json
-type Message struct {
-	Email    string `json:"email"`
-	Username string `json:"username"`
-	Message  string `json:"message"`
-}
 
 func main() {
 	// create a simple file server
@@ -64,7 +56,7 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		// send the newly received msg to broadcast channel
-		broadcast <- string(msg)
+		broadcast <- msg
 	}
 }
 
@@ -75,7 +67,7 @@ func handleMessages() {
 		// send it to every client that is connected
 		for client := range clients {
 			//err := client.WriteJSON(msg)
-			err := client.WriteMessage(websocket.TextMessage, []byte(msg))
+			err := client.WriteMessage(websocket.TextMessage, msg)
 			if err != nil {
 				log.Printf("error: %v", err)
 				client.Close()
