@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -10,8 +11,9 @@ import (
 
 // map where key is pointer to websocket
 var clients = make(map[*websocket.Conn]bool)
+
 // channel that acts as a queue for msgs sent by clients
-var broadcast = make(chan Message)
+var broadcast = make(chan string)
 
 // takes normal http connection and upgrades to websocket
 var upgrader = websocket.Upgrader{}
@@ -19,9 +21,9 @@ var upgrader = websocket.Upgrader{}
 // holds our messages
 // backticks are metadata used by go to serialize/unserialize to/from json
 type Message struct {
-	Email string `json:"email"`
+	Email    string `json:"email"`
 	Username string `json:"username"`
-	Message string `json:"message"`
+	Message  string `json:"message"`
 }
 
 func main() {
@@ -42,6 +44,7 @@ func main() {
 
 func handleConnections(w http.ResponseWriter, r *http.Request) {
 	// upgrade initial get req to websocket
+	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Fatal(err)
@@ -52,16 +55,16 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 	clients[ws] = true
 
 	for {
-		var msg Message
+		//var msg string
 		// read in new message as json and map it to a message obj
-		err := ws.ReadJSON(&msg)
+		_, msg, err := ws.ReadMessage()
 		if err != nil {
 			log.Printf("error: %v", err)
 			delete(clients, ws)
 			break
 		}
 		// send the newly received msg to broadcast channel
-		broadcast <- msg
+		broadcast <- string(msg)
 	}
 }
 
@@ -71,7 +74,8 @@ func handleMessages() {
 		msg := <-broadcast
 		// send it to every client that is connected
 		for client := range clients {
-			err := client.WriteJSON(msg)
+			//err := client.WriteJSON(msg)
+			err := client.WriteMessage(websocket.TextMessage, []byte(msg))
 			if err != nil {
 				log.Printf("error: %v", err)
 				client.Close()

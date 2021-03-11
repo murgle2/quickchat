@@ -1,5 +1,9 @@
+import 'dart:developer';
+import 'dart:typed_data';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'dart:convert';
 
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/status.dart' as status;
@@ -18,7 +22,8 @@ class MyApp extends StatelessWidget {
       ),
       home: ChatScreen(
         channel:
-          WebSocketChannel.connect(Uri.parse('wss://echo.websocket.org')),
+          // WebSocketChannel.connect(Uri.parse('wss://echo.websocket.org')),
+          WebSocketChannel.connect(Uri.parse('ws://localhost:8000/ws')),
       ),
     );
   }
@@ -162,6 +167,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
     Stream stream = widget.channel.stream;
     stream.listen((msg) {
+      log(msg);
       ChatMessage message = ChatMessage(
         text: msg,
       );
@@ -177,7 +183,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       _isComposing = false;
     });
 
-    widget.channel.sink.add(text);
+    widget.channel.sink.add(Utf8Encoder().convert(text));
 
     // make sure we still have focus post submit
     _focusNode.requestFocus();
