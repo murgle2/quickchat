@@ -7,8 +7,6 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// global variables are usualy bad practice..
-
 // map where key is pointer to websocket
 var clients = make(map[*websocket.Conn]bool)
 
@@ -19,9 +17,6 @@ var broadcast = make(chan []byte)
 var upgrader = websocket.Upgrader{}
 
 func main() {
-	// create a simple file server
-	fs := http.FileServer(http.Dir("../public"))
-	http.Handle("/", fs)
 	// configure websocket route
 	http.HandleFunc("/ws", handleConnections)
 	// start listening for inc messages
@@ -35,8 +30,9 @@ func main() {
 }
 
 func handleConnections(w http.ResponseWriter, r *http.Request) {
-	// upgrade initial get req to websocket
+	// setting check origin to true only for local testing purposes
 	upgrader.CheckOrigin = func(r *http.Request) bool { return true }
+	// upgrade initial get req to websocket
 	ws, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Fatal(err)
@@ -47,8 +43,7 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 	clients[ws] = true
 
 	for {
-		//var msg string
-		// read in new message as json and map it to a message obj
+		// read in new message
 		_, msg, err := ws.ReadMessage()
 		if err != nil {
 			log.Printf("error: %v", err)
@@ -66,7 +61,6 @@ func handleMessages() {
 		msg := <-broadcast
 		// send it to every client that is connected
 		for client := range clients {
-			//err := client.WriteJSON(msg)
 			err := client.WriteMessage(websocket.TextMessage, msg)
 			if err != nil {
 				log.Printf("error: %v", err)

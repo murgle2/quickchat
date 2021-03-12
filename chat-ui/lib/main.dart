@@ -1,6 +1,3 @@
-import 'dart:developer';
-import 'dart:typed_data';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'dart:convert';
@@ -31,7 +28,7 @@ class MyApp extends StatelessWidget {
 
 class ChatMessage extends StatelessWidget {
   final String text;
-  String _name = 'Brian Yetter';
+  String _name = 'User';
 
   ChatMessage({required this.text});
 
@@ -50,7 +47,7 @@ class ChatMessage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SelectableText(_name + " User",
+                SelectableText(_name,
                     style: Theme.of(context).textTheme.headline6),
                 Container(
                   margin: EdgeInsets.only(top: 5.0),
@@ -85,8 +82,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
     return Scaffold(
       appBar: AppBar(
         title: Center(child: Text('Chat Box', textAlign: TextAlign.center)),
-        elevation: Theme.of(context).platform == TargetPlatform.iOS ? 0.0 : 4.0,
         // elevation gives shadow size
+        elevation: Theme.of(context).platform == TargetPlatform.iOS ? 0.0 : 4.0,
       ),
       body: Column(
         children: [
@@ -128,9 +125,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
                 },
                 onSubmitted: _isComposing ? _handleSubmitted : null,
                 decoration:
-                    //InputDecoration.collapsed(hintText: 'Send a message'),
                     InputDecoration(
-                  //contentPadding: EdgeInsets.symmetric(vertical: 0),
                   hintText: "Join the chat!",
                   border: InputBorder.none,
                 ),
@@ -165,9 +160,9 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
+    // receive messages from websocket server
     Stream stream = widget.channel.stream;
     stream.listen((msg) {
-      log(msg);
       ChatMessage message = ChatMessage(
         text: msg,
       );
@@ -183,7 +178,8 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
       _isComposing = false;
     });
 
-    widget.channel.sink.add(Utf8Encoder().convert(text));
+    // send message to websocket server
+    widget.channel.sink.add(text);
 
     // make sure we still have focus post submit
     _focusNode.requestFocus();
@@ -191,6 +187,7 @@ class _ChatScreenState extends State<ChatScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    // close websocket connection
     widget.channel.sink.close();
     super.dispose();
   }
