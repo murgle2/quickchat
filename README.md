@@ -1,4 +1,4 @@
-# openchat
+# quickchat
 
 Basic chat example using Flutter and Go websockets server.
 
